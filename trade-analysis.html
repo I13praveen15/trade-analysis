@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SMC Terminal</title>
+<style>
+:root{--bg:#131722;--pn:#1e222d;--bd:#2a2e39;--fg:#d1d4dc;--mut:#787b86;--up:#26a69a;--dn:#ef5350;--ac:#2962ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:13px/1.45 -apple-system,"Segoe UI",Roboto,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+button,select,input,textarea{font:inherit;background:var(--bg);color:var(--fg);border:1px solid var(--bd);border-radius:6px;padding:5px 9px}button{cursor:pointer}button.p{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:600}
+.top{display:flex;gap:8px;align-items:center;padding:6px 10px;background:var(--pn);border-bottom:1px solid var(--bd);flex-wrap:wrap}
+.logo{font-weight:800;letter-spacing:.04em}.pill{font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;background:var(--bd);color:var(--mut)}.pill.on{background:var(--up);color:#fff}
+#keys{display:flex;gap:8px;padding:6px 10px;background:var(--pn);border-bottom:1px solid var(--bd);flex-wrap:wrap}
+.main{flex:1;display:flex;min-height:0}.tools{width:46px;background:var(--pn);border-right:1px solid var(--bd);display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0}
+.tools button{width:36px;height:36px;padding:0;font-size:16px;border:0;background:none}.tools button.a{background:var(--ac);color:#fff}
+.mid{flex:1;display:flex;flex-direction:column;min-width:0}.ov{display:flex;gap:12px;flex-wrap:wrap;padding:5px 10px;border-bottom:1px solid var(--bd);font-size:12px;color:var(--mut)}.ov label{cursor:pointer}
+.cw{flex:1;min-height:0;position:relative}canvas{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair}
+.rt{width:400px;background:var(--pn);border-left:1px solid var(--bd);display:flex;flex-direction:column;min-height:0}
+.tabs{display:flex;border-bottom:1px solid var(--bd)}.tabs button{flex:1;border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:9px 0;color:var(--mut)}.tabs .a{border-color:var(--ac);color:#fff}
+.pn{flex:1;overflow:auto;padding:10px;display:none;min-height:0}.pn.a{display:block}#p_ai.a{display:flex;flex-direction:column;padding:0}
+.card{background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:11px;margin-bottom:10px}
+.k{font-size:11px;letter-spacing:.08em;color:var(--mut);font-weight:700;margin-bottom:4px}.big{font-size:26px;font-weight:800;line-height:1.1}.up{color:var(--up)}.dn{color:var(--dn)}.mut{color:var(--mut)}.sub{color:var(--mut);margin-top:6px}
+.r{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--bd)}.r:last-child{border:0}
+.sc{padding:8px 10px;border-radius:8px;margin-top:6px;background:var(--pn);border-left:4px solid var(--mut)}.sc.u{border-color:var(--up)}.sc.d{border-color:var(--dn)}
+.ck div{padding:1px 0}.ok{color:var(--up)}.no{color:var(--mut)}
+#log{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}.m{max-width:92%;padding:9px 12px;border-radius:14px;background:var(--bg);border:1px solid var(--bd)}.m.u{align-self:flex-end;background:var(--ac);border-color:var(--ac);color:#fff}
+.chips{display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 8px}.chips button{font-size:12px;border-radius:99px;padding:3px 10px}
+.in{display:flex;gap:6px;padding:10px;border-top:1px solid var(--bd)}.in textarea{flex:1;height:44px;resize:none}
+table td,table th{padding:6px 4px;text-align:left}
+@media(max-width:900px){body{overflow:auto;height:auto}.main{flex-direction:column}.rt{width:auto;height:75vh}.cw{height:60vh;flex:none}.tools{width:auto;flex-direction:row;overflow:auto}}
+</style></head><body>
+<div class="top"><span class="logo">◢ SMC TERMINAL</span><span id="live" class="pill">OFFLINE</span>
+<select id="src"><option value="bin">Binance (no key)</option><option value="td">Twelve Data (forex, gold)</option></select>
+<input id="sym" value="PAXGUSDT" size="9"><select id="tf"><option>5m</option><option selected>15m</option><option>1h</option><option>4h</option></select>
+<button class="p" id="go">Go live</button><button id="dm">Demo</button><button id="kb">⚙ Keys</button><span id="st" class="mut"></span></div>
+<div id="keys" hidden><input id="tk" type="text" name="td-key" autocomplete="off" spellcheck="false" placeholder="Twelve Data API key (32 characters)" size="30"><button id="tt">Test key</button><input id="ck" type="text" name="cl-key" autocomplete="off" spellcheck="false" placeholder="Claude API key (optional, AI chat)" size="26"><span class="mut">Keys stay in this browser only.</span></div>
+<div class="main"><div class="tools" id="tools"></div>
+<div class="mid"><div class="ov" id="ov"></div><div class="cw"><canvas id="cv"></canvas></div></div>
+<div class="rt"><div class="tabs"><button data-t="p_an" class="a">Analysis</button><button data-t="p_rk">Risk</button><button data-t="p_sc">Scanner</button><button data-t="p_ai">AI Chat</button></div>
+<div class="pn a" id="p_an"></div>
+<div class="pn" id="p_rk"><div class="card"><div class="k">YOUR ACCOUNT</div><div style="display:flex;gap:8px"><label>Budget<br><input id="bal" type="number" value="1000" style="width:110px"></label><label>Risk % per trade<br><input id="rk" type="number" value="1" step="0.25" style="width:110px"></label></div></div><div id="rk_out"></div></div>
+<div class="pn" id="p_sc"><button class="p" id="scb">Scan all pairs</button> <span id="scs" class="mut"></span><div class="mut" style="margin:6px 0">Free Twelve Data keys allow 8 requests a minute, so a full forex scan takes about 3 minutes. Click a row to open it.</div><div id="sct"></div></div>
+<div class="pn" id="p_ai"><div id="log"></div><div class="chips" id="chips"></div><div class="in"><textarea id="q" placeholder="Ask anything: bias, where to buy, lot size, what is a breaker block, AMT value area…"></textarea><button class="p" id="send">Send</button></div></div>
+</div></div>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+let C=[],A=null,V=120,timer=0,tool='c',pend=null,ms=null,G={},D=[],HI=[],R={};
+const KB=[
+[/market structure|\bhh\b|\bhl\b|higher high|trend/,'Market structure: an uptrend makes higher highs (HH) and higher lows (HL); a downtrend makes lower highs (LH) and lower lows (LL). The trend stays valid until structure breaks.'],
+[/\bbos\b|choch|\bmss\b|break of structure|change of character/,'BOS (break of structure): a candle closes beyond the last swing in the trend direction, so the trend continues. CHoCH or MSS: a close beyond the last swing against the trend, the first sign of reversal.'],
+[/order block|\bob\b/,'Order block (OB): the last opposite candle before an impulsive move that breaks structure. A bullish OB is the last down candle (demand), a bearish OB the last up candle (supply). It stays valid until price closes through it (mitigation).'],
+[/supply|demand/,'Supply and demand zones are areas price left sharply, showing unfilled orders. Fresh zones react best, and each retest weakens them.'],
+[/\bfvg\b|fair value|imbalance|gap/,'Fair value gap (FVG): a 3-candle pattern where the wicks of candle 1 and candle 3 do not overlap, leaving an imbalance. Price often returns to fill it or reacts inside it. Its 50% level is called consequent encroachment.'],
+[/ifvg|inverse/,'Inverse FVG (iFVG): an FVG that price closes through. It flips role, so old support becomes resistance.'],
+[/breaker/,'Breaker block: a failed order block. After price sweeps liquidity and breaks structure through an OB, that OB flips polarity and is retested as support or resistance.'],
+[/mitigation|propulsion/,'Mitigation block: the zone where a swing failed to make a new high or low before a structure shift, retested later. Propulsion block: an OB candle that forms in or after another OB and pushes price onward.'],
+[/liquidity|stop hunt|sweep|equal high|equal low|\bbsl\b|\bssl\b/,'Liquidity: resting stop orders above highs (buy-side, BSL) and below lows (sell-side, SSL). Equal highs and lows are magnets. Price often sweeps them (a stop hunt) before reversing.'],
+[/inducement/,'Inducement: a minor swing that lures traders into early entries. Smart money sweeps it before the real move.'],
+[/premium|discount|equilibrium/,'Premium and discount: split a swing range at 50% (equilibrium). Above it is premium (look to sell), below it is discount (look to buy).'],
+[/\bote\b|optimal trade|fib/,'Optimal trade entry (OTE): a retracement of 62% to 79% of the impulse leg (70.5% is the sweet spot), ideally overlapping an OB or FVG.'],
+[/displacement/,'Displacement: strong, large-bodied candles that leave FVGs, showing institutional intent. It confirms a structure break.'],
+[/power of 3|po3|\bamd\b|judas|manipulation|accumulation/,'Power of 3 (AMD): accumulation (range), manipulation (a Judas swing sweeps liquidity against the real move), then distribution (the true move). On a bullish day price sweeps below the open or Asian low, then rallies.'],
+[/kill ?zone|session|london|asian|new york/,'Killzones (New York time, approximate): Asian 8pm to midnight, London 2am to 5am, New York AM 7am to 10am, New York PM 1:30pm to 4pm. Most sweeps and reversals happen in these windows.'],
+[/silver bullet/,'Silver Bullet: one-hour windows (3 to 4am, 10 to 11am, 2 to 3pm New York). Trade the first FVG after a liquidity sweep toward the opposite liquidity.'],
+[/top.?down|htf|higher timeframe|daily bias/,'Top-down: set bias on the daily or 4H (structure, previous day and week highs and lows, premium or discount), refine on 1H, and enter on 15m or 5m after a CHoCH into a zone.'],
+[/pdh|pdl|previous day|key level|opening price/,'Key levels: previous day, week and month highs and lows, session highs and lows, and opening prices. They act as liquidity targets.'],
+[/smt|divergence|correlat/,'SMT divergence: correlated markets (EURUSD and GBPUSD, or ES and NQ) fail to confirm each other\'s new high or low, hinting at a reversal.'],
+[/\bamt\b|auction|value area|\bpoc\b|market profile|\bvah\b|\bval\b/,'Auction Market Theory (AMT): price auctions to find fair value, alternating between balance (range) and imbalance (trend). Value area is about 70% of volume, POC is the price with the most volume, and VAH and VAL are the value area edges.'],
+[/hvn|lvn|initial balance|single print|acceptance|rejection/,'AMT use: acceptance outside value means trend continuation, and rejection back inside means a move to the other side of value. High-volume nodes act as magnets, low-volume nodes as fast-travel zones. Initial balance is the first-hour range, and single prints show strong initiative.'],
+[/wyckoff|spring|utad/,'Wyckoff: accumulation (a spring below the range, then markup) and distribution (an upthrust above the range, then markdown) follow the same sweep-then-reverse logic as AMD.'],
+[/risk|lot|position size|budget|balance/,'Risk: risk 0.5% to 2% of your balance per trade. Lots = (balance x risk%) / (SL distance x contract size x USD value per unit). Aim for 2R or more, and move stops only on structure.'],
+[/model|setup|strategy|entry/,'Typical SMC model: higher-timeframe bias, liquidity sweep, CHoCH with displacement, retrace into an OB or FVG (discount for buys, premium for sells), SL beyond the zone, TP at the opposite liquidity.'],
+[/confluence/,'Confluence beats single signals: trend alignment, a fresh zone, FVG overlap, killzone timing, a prior sweep and reward to risk of 2 or more. No setup is guaranteed, so skip trades without confluence.']];
+function demo(){let s=Date.now()%2147483646+1;const r=()=>(s=(s*16807)%2147483647)/2147483647;let p=2300,d=1,out=[],t=Date.now()-300*9e5;
+ for(let i=0;i<300;i++){if(i%40===0)d=r()<.5?1:-1;const v=3+r()*3,o=p,c=o+d*v*.3+(r()-.5)*v*2,h=Math.max(o,c)+r()*v*.8,l=Math.min(o,c)-r()*v*.8;out.push({t:new Date(t+i*9e5).toISOString().slice(0,16).replace('T',' '),o,h,l,c});p=c}return out}
+function analyze(K){
+ const n=K.length,N=3;if(n<30)return null;
+ const H=K.map(k=>k.h),L=K.map(k=>k.l),px=K[n-1].c,dp=px>1000?2:px>20?3:5;
+ let s=0;const m=14;for(let i=n-m;i<n;i++)s+=Math.max(K[i].h-K[i].l,Math.abs(K[i].h-K[i-1].c),Math.abs(K[i].l-K[i-1].c));const atr=s/m;
+ const isH=i=>{for(let j=i-N;j<=i+N;j++){if(j<i&&H[j]>H[i])return 0;if(j>i&&H[j]>=H[i])return 0}return 1};
+ const isL=i=>{for(let j=i-N;j<=i+N;j++){if(j<i&&L[j]<L[i])return 0;if(j>i&&L[j]<=L[i])return 0}return 1};
+ const sw=[];for(let i=N;i<n-N;i++){if(isH(i))sw.push({i,p:H[i],k:'H'});if(isL(i))sw.push({i,p:L[i],k:'L'})}
+ let ph=null,pl=null;for(const q of sw){if(q.k==='H'){q.lb=ph==null?'H':q.p>ph?'HH':'LH';ph=q.p}else{q.lb=pl==null?'L':q.p<pl?'LL':'HL';pl=q.p}}
+ let tr=0,lh=null,ll=null;const ev=[];
+ for(let i=0;i<n;i++){const k=i-N;if(k>=N){if(isH(k))lh={i:k,p:H[k],b:0};if(isL(k))ll={i:k,p:L[k],b:0}}
+  if(lh&&!lh.b&&K[i].c>lh.p){lh.b=1;ev.push({i,f:lh.i,lvl:lh.p,d:1,type:tr<0?'CHoCH':'BOS'});tr=1}
+  if(ll&&!ll.b&&K[i].c<ll.p){ll.b=1;ev.push({i,f:ll.i,lvl:ll.p,d:-1,type:tr>0?'CHoCH':'BOS'});tr=-1}}
+ const obs=[];
+ for(const e of ev){const d=e.d;let mi=e.f;for(let j=e.f;j<=e.i;j++)if(d>0?L[j]<L[mi]:H[j]>H[mi])mi=j;
+  let o=-1;for(let j=mi;j>=Math.max(0,mi-5);j--)if(d>0?K[j].c<K[j].o:K[j].c>K[j].o){o=j;break}
+  if(o<0)continue;const lo=L[o],hi=H[o];let mit=0;for(let j=e.i+1;j<n;j++)if(d>0?K[j].c<lo:K[j].c>hi){mit=1;break}
+  if(!mit)obs.push({i:o,lo,hi,d})}
+ const fv=[];
+ for(let i=2;i<n;i++){const a=K[i-2],c=K[i];let g=null;
+  if(c.l>a.h&&c.l-a.h>.1*atr)g={d:1,lo:a.h,hi:c.l};else if(c.h<a.l&&a.l-c.h>.1*atr)g={d:-1,lo:c.h,hi:a.l};
+  if(!g)continue;let dead=0;for(let j=i+1;j<n;j++)if(g.d>0?L[j]<=g.lo:H[j]>=g.hi){dead=1;break}
+  if(!dead)fv.push({...g,i:i-1})}
+ const pools=sw.map(q=>{let sj=-1;for(let j=q.i+1;j<n;j++)if(q.k==='H'?H[j]>q.p:L[j]<q.p){sj=j;break}return{...q,sj,eq:0}});
+ for(const a of pools)for(const b of pools)if(a!==b&&a.k===b.k&&Math.abs(a.p-b.p)<.15*atr)a.eq=1;
+ const bsl=pools.filter(k=>k.k==='H'&&k.sj<0&&k.p>px).sort((a,b)=>a.p-b.p),ssl=pools.filter(k=>k.k==='L'&&k.sj<0&&k.p<px).sort((a,b)=>b.p-a.p);
+ const rs=pools.filter(k=>k.sj>=n-25&&k.sj>0&&(k.k==='H'?K[k.sj].c<k.p:K[k.sj].c>k.p));
+ const lH=[...sw].reverse().find(k=>k.k==='H'),lL=[...sw].reverse().find(k=>k.k==='L');
+ let hi=lH?lH.p:Math.max(...H.slice(-60)),lo=lL?lL.p:Math.min(...L.slice(-60));if(hi<=lo){hi=Math.max(...H.slice(-60));lo=Math.min(...L.slice(-60))}
+ const eq=(hi+lo)/2,zone=px>eq?'Premium':'Discount',lastEv=ev[ev.length-1];
+ const tgt=(d,from)=>{const c=d<0?[...obs.filter(o=>o.d>0&&o.hi<from).map(o=>({p:o.hi,n:'demand zone'})),...ssl.filter(k=>k.p<from).map(k=>({p:k.p,n:'sell-side liquidity'}))].sort((a,b)=>b.p-a.p):[...obs.filter(o=>o.d<0&&o.lo>from).map(o=>({p:o.lo,n:'supply zone'})),...bsl.filter(k=>k.p>from).map(k=>({p:k.p,n:'buy-side liquidity'}))].sort((a,b)=>a.p-b.p);return c[0]||null};
+ const sup=obs.filter(o=>o.d<0&&o.hi>px).sort((a,b)=>a.lo-b.lo)[0],dem=obs.filter(o=>o.d>0&&o.lo<px).sort((a,b)=>b.hi-a.hi)[0];
+ const scn=[{d:-1,z:sup,t:sup&&tgt(-1,sup.lo)},{d:1,z:dem,t:dem&&tgt(1,dem.hi)}];
+ function plan(d){
+  const zs=[...obs.filter(o=>o.d===d).map(o=>({...o,kind:'Order Block',src:o})),...fv.filter(g=>g.d===d).map(g=>({...g,kind:'FVG',src:g}))].filter(z=>d>0?z.lo<px:z.hi>px);
+  if(!zs.length)return null;zs.forEach(z=>z.dist=d>0?Math.max(0,px-z.hi):Math.max(0,z.lo-px));
+  zs.sort((a,b)=>a.dist-b.dist||(a.kind==='FVG')-(b.kind==='FVG'));
+  const z=zs[0],entry=z.dist===0?px:(z.lo+z.hi)/2,sl=d>0?z.lo-.25*atr:z.hi+.25*atr,risk=Math.abs(entry-sl);if(!(risk>0))return null;
+  const cand=pools.filter(k=>k.sj<0&&(d>0?k.k==='H'&&k.p>entry:k.k==='L'&&k.p<entry)).map(k=>k.p).sort((a,b)=>d>0?a-b:b-a);
+  let tp=cand.find(p=>Math.abs(p-entry)>=1.5*risk),tpl='liquidity target';if(tp==null){tp=entry+d*2*risk;tpl='2R, no liquidity target'}
+  const rr=Math.abs(tp-entry)/risk,c=[],add=(ok,t,p)=>c.push({ok:!!ok,t,p});
+  add(tr===d,'Trend aligned',2);add(true,z.kind==='Order Block'?(d>0?'At demand zone':'At supply zone'):'FVG entry only',z.kind==='Order Block'?2:1);
+  add([...obs,...fv].some(o=>o.d===d&&o!==z.src&&o.lo<z.hi&&o.hi>z.lo),'OB and FVG overlap',1);
+  add(d>0?entry<eq:entry>eq,d>0?'Entry in discount':'Entry in premium',1);
+  add(rs.some(r=>r.k===(d>0?'L':'H')),'Opposite liquidity swept',1);add(lastEv&&lastEv.d===d,'Latest break supports it',1);add(rr>=2,'Reward to risk 2+',1);
+  return{d,z,entry,sl,tp,tpl,rr,c,score:c.reduce((a,x)=>a+(x.ok?x.p:0),0)}}
+ const dir=tr||(lastEv?lastEv.d:0),P={1:plan(1),'-1':plan(-1)};
+ return{n,px,dp,atr,sw,ev,obs,fv,pools,bsl,ssl,rs,eq,hi,lo,zone,tr,scn,P,dir,p:dir?P[dir]:null,lH,lL}}
+const F=(a,x)=>x.toFixed(a.dp);
+function biasOf(a){
+ const w=a.tr>0?'BULLISH':a.tr<0?'BEARISH':'RANGING',e=a.ev[a.ev.length-1];
+ const adv=a.tr>0?(a.zone==='Discount'?'Price is in Discount, a good area to look for buys.':'Price is in Premium, wait for a pullback to Discount before buying.'):a.tr<0?(a.zone==='Premium'?'Price is in Premium, a good area to look for sells.':'Price is in Discount, wait for a pullback to Premium before selling.'):'No clear trend, avoid trading the middle of the range.';
+ return{w,cls:a.tr>0?'up':a.tr<0?'dn':'',sub:(a.tr>0?'Higher highs and higher lows.':a.tr<0?'Lower highs and lower lows.':'Mixed structure.')+(e?` Last ${e.type} ${e.d>0?'up':'down'} at ${F(a,e.lvl)}.`:'')+' '+adv}}
+function scnText(a,s){return s.z?`If price reaches the ${s.d<0?'SUPPLY':'DEMAND'} zone ${F(a,s.z.lo)} – ${F(a,s.z.hi)}, expect ${s.d<0?'sellers':'buyers'} to react and price to move ${s.d<0?'down':'up'} toward ${s.t?F(a,s.t.p)+' ('+s.t.n+')':'the next liquidity'}.`:`No fresh ${s.d<0?'supply above':'demand below'} the price right now.`}
+function planText(a,d){const p=a.P[d],nm=d>0?'BUY':'SELL';if(!p)return `No valid ${nm} setup: there is no unmitigated ${d>0?'demand':'supply'} zone or FVG ${d>0?'below':'above'} price. Wait for a new structure break and retrace.`;
+ return `${nm} idea at the ${p.z.kind==='Order Block'?(d>0?'DEMAND':'SUPPLY')+' (order block)':'FVG'} zone ${F(a,p.z.lo)} – ${F(a,p.z.hi)}\nEntry: ${F(a,p.entry)}\nStop loss: ${F(a,p.sl)}\nTake profit: ${F(a,p.tp)} (${p.tpl}), RR 1:${p.rr.toFixed(1)}\n${p.z.dist===0?'Price is inside the zone now. Wait for a rejection candle before entering.':'Wait for price to retrace into the zone, then look for a rejection.'}\nConfluence: ${p.score}/9`+(a.tr&&a.tr!==d?'\nCareful: this is against the main trend, so treat it as a short-term trade.':'')}
+function answer(q){q=q.toLowerCase();const a=A;if(!a)return 'Connect a live feed first (Go live) or press Demo, then ask me again.';const m=r=>r.test(q),f=x=>F(a,x),b=biasOf(a);
+ if(m(/\b(buy|long)\b/))return planText(a,1);if(m(/\b(sell|short)\b/))return planText(a,-1);
+ if(m(/next|where.*(go|move)|target|will it/)&&!m(/\b(sl|stop)\b/))return a.scn.map(s=>scnText(a,s)).join('\n\n')+(a.p?`\n\nMain plan: ${a.p.d>0?'BUY':'SELL'}, target ${f(a.p.tp)}.`:'');
+ if(m(/\b(sl|stop|tp|take profit|profit|loss)\b/))return a.p?planText(a,a.dir):'No clean trade plan right now. Wait for a retrace into a fresh zone.';
+ if(m(/bias|trend|direction/))return `Bias: ${b.w}\n${b.sub}`;
+ if(m(/structure|bos|choch|swing|break/))return `Structure is ${b.w.toLowerCase()}.\nRecent swings: ${a.sw.slice(-6).map(s=>s.lb).join(' › ')}\nRecent breaks: ${a.ev.slice(-3).map(e=>e.type+(e.d>0?' up':' down')+' at '+f(e.lvl)).join(', ')||'none'}`;
+ if(m(/\bob\b|order block|supply|demand|zone/)){const z=a.obs.slice(-6);return z.length?z.map(o=>`${o.d>0?'DEMAND (bullish OB)':'SUPPLY (bearish OB)'}: ${f(o.lo)} – ${f(o.hi)}`).join('\n')+`\nPrice now: ${f(a.px)}`:'No unmitigated order blocks right now.'}
+ if(m(/fvg|gap|imbalance/)){const g=a.fv.slice(-4);return g.length?g.map(o=>`${o.d>0?'Bullish':'Bearish'} FVG: ${f(o.lo)} – ${f(o.hi)}`).join('\n'):'No open fair value gaps.'}
+ if(m(/liquid|sweep|equal|stop hunt/))return `Buy-side liquidity above: ${a.bsl.slice(0,3).map(k=>f(k.p)+(k.eq?' (equal highs)':'')).join(', ')||'none'}\nSell-side liquidity below: ${a.ssl.slice(0,3).map(k=>f(k.p)+(k.eq?' (equal lows)':'')).join(', ')||'none'}\nRecent sweeps: ${a.rs.length?a.rs.map(k=>(k.k==='H'?'high ':'low ')+f(k.p)).join(', '):'none'}`;
+ if(m(/premium|discount|equilib/))return `Swing range ${f(a.lo)} – ${f(a.hi)}, equilibrium ${f(a.eq)}.\nPrice ${f(a.px)} is in ${a.zone.toUpperCase()}. ${b.sub.split('. ').pop()}`;
+ return `${b.w} bias at ${f(a.px)}.\n${b.sub}\n\n${a.scn.map(s=>scnText(a,s)).join('\n')}\n\nAsk me: where to buy, where to sell, SL and TP, order blocks, liquidity, next target.`}
+
+const FX=['EUR/USD','GBP/USD','USD/JPY','USD/CHF','AUD/USD','USD/CAD','NZD/USD','EUR/GBP','EUR/JPY','GBP/JPY','AUD/JPY','CAD/JPY','CHF/JPY','NZD/JPY','EUR/AUD','EUR/CAD','EUR/CHF','GBP/AUD','GBP/CAD','GBP/CHF','AUD/CAD','AUD/NZD','AUD/CHF','XAU/USD'];
+const BN=['PAXGUSDT','BTCUSDT','ETHUSDT','EURUSDT','GBPUSDT','AUDUSDT','SOLUSDT','BNBUSDT'];
+const SRC={bin:{sym:'PAXGUSDT',ms:5000,list:BN},td:{sym:'XAU/USD',ms:120000,list:FX}};
+const tdKey=()=>$('tk').value.replace(/^\s*apikey\s*=\s*/i,'').replace(/["'\s]/g,'');
+async function getK(src,sym,tf){
+ if(src==='bin'){const r=await fetch(`https://data-api.binance.vision/api/v3/klines?symbol=${encodeURIComponent(sym.toUpperCase())}&interval=${tf}&limit=400`);const j=await r.json();if(!Array.isArray(j))throw new Error(j.msg||'Bad symbol');return j.map(k=>({t:new Date(k[0]).toISOString().slice(0,16).replace('T',' '),o:+k[1],h:+k[2],l:+k[3],c:+k[4]}))}
+ const key=tdKey();if(!key)throw new Error('Add your Twelve Data key under Keys');try{localStorage.setItem('tdkey',key)}catch(e){}
+ const r=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(sym)}&interval=${{'5m':'5min','15m':'15min','1h':'1h','4h':'4h'}[tf]}&outputsize=400&order=asc&apikey=${encodeURIComponent(key)}`);const j=await r.json();
+ if(j.status==='error'||!j.values)throw new Error(j.message||'No data');return j.values.map(v=>({t:v.datetime,o:+v.open,h:+v.high,l:+v.low,c:+v.close}))}
+const netMsg=(e,s)=>/fetch|network|load/i.test(e.message)?`Cannot reach ${s==='td'?'api.twelvedata.com':'data-api.binance.vision'} (${e.message}). This page runs from ${location.protocol==='file:'?'a local file, which is fine, so check your internet, VPN, ad blocker or school/work firewall':location.origin+', which blocks outside connections, so open the downloaded file directly from your computer'}.`:'Live data failed: '+e.message;
+const live=on=>{$('live').className='pill'+(on?' on':'');$('live').textContent=on?'LIVE':'OFFLINE'};
+function setData(k,lv){C=k;A=analyze(C);if(!A){$('st').textContent='Not enough candles.';return}render();renderRisk();draw();$('st').textContent=(lv?'LIVE · ':'DEMO · ')+`${$('sym').value} · ${F(A,A.px)} · ${C[C.length-1].t}`}
+async function tick(){clearTimeout(timer);const s=$('src').value;try{setData(await getK(s,$('sym').value.trim(),$('tf').value),1);live(1);timer=setTimeout(tick,SRC[s].ms)}catch(e){live(0);$('st').textContent=netMsg(e,s);timer=setTimeout(tick,15000)}}
+function spec(sym,px){const s=sym.toUpperCase().replace('/','');if(/USDT$/.test(s))return{cs:1,uq:1,u:'units'};if(s.startsWith('XAU'))return{cs:100,uq:1,u:'lots'};return{cs:1e5,uq:/USD$/.test(s)?1:/^USD/.test(s)?1/px:1,u:'lots'}}
+function sizes(a,sym){const o={},sp=spec(sym,a.px),ra=(+$('bal').value||0)*(+$('rk').value||0)/100;for(const d of[1,-1]){const p=a.P[d];if(!p)continue;const dist=Math.abs(p.entry-p.sl),pu=sp.cs*sp.uq,lot=ra/(dist*pu);o[d]={risk:ra,dist,lot,profit:lot*Math.abs(p.tp-p.entry)*pu}}return o}
+const rw=(k,v,c)=>`<div class="r"><span class="mut">${k}</span><b class="${c||''}">${v}</b></div>`;
+function renderRisk(){if(!A){$('rk_out').innerHTML='';return}const a=A,sym=$('sym').value,sz=sizes(a,sym),sp=spec(sym,a.px),$$=x=>'$'+x.toFixed(2);
+ $('rk_out').innerHTML=[1,-1].map(d=>{const p=a.P[d],s=sz[d],nm=d>0?'BUY CASE':'SELL CASE';if(!p)return `<div class="card"><div class="k">${nm}</div><div class="sub">No valid zone for this case right now.</div></div>`;
+  return `<div class="card"><div class="k">${nm}${a.tr&&a.tr!==d?' · AGAINST TREND':''} · CONFLUENCE ${p.score}/9</div><div class="big ${d>0?'up':'dn'}" style="font-size:22px">${sp.u==='units'?s.lot.toFixed(4):s.lot>=.01?s.lot.toFixed(2):'under 0.01'} ${sp.u}</div><div style="margin-top:6px">`+rw('Entry',F(a,p.entry))+rw('Stop loss',F(a,p.sl),'dn')+rw('Take profit',F(a,p.tp),'up')+rw('SL distance',F(a,s.dist))+rw('Money at risk',$$(s.risk))+rw('Profit at TP (1:'+p.rr.toFixed(1)+')',$$(s.profit),'up')+`</div></div>`}).join('')+`<div class="mut">Approximate. Cross pairs use a rough USD conversion, so confirm contract size and pip value with your broker.</div>`}
+function render(){const a=A,b=biasOf(a),p=a.p;
+ let h=`<div class="card"><div class="k">MARKET BIAS</div><div class="big ${b.cls}">${b.w} ${a.tr>0?'▲':a.tr<0?'▼':'◆'}</div><div class="sub">${b.sub}</div></div><div class="card"><div class="k">WHERE NEXT</div>${a.scn.map(s=>`<div class="sc ${s.d<0?'d':'u'}">${scnText(a,s)}</div>`).join('')}</div>`;
+ h+=!p?`<div class="card"><div class="k">TRADE PLAN</div><div class="big">NO TRADE</div><div class="sub">No clear bias or no fresh zone. Wait for a retrace.</div></div>`:`<div class="card"><div class="k">TRADE PLAN · ${p.score}/9 CONFLUENCE</div><div class="big ${p.d>0?'up':'dn'}">${p.d>0?'BUY':'SELL'} <span style="font-size:13px" class="mut">${p.z.kind==='Order Block'?(p.d>0?'demand':'supply'):'FVG'} ${F(a,p.z.lo)} – ${F(a,p.z.hi)}</span></div><div style="margin-top:8px">${rw('Entry',F(a,p.entry))}${rw('Stop loss',F(a,p.sl),'dn')}${rw('Take profit',F(a,p.tp),'up')}${rw('Risk : Reward','1 : '+p.rr.toFixed(1))}</div><div class="ck" style="margin-top:8px">${p.c.map(x=>`<div class="${x.ok?'ok':'no'}">${x.ok?'✓':'✗'} ${x.t}</div>`).join('')}</div></div>`;
+ $('p_an').innerHTML=h}
+function draw(){
+ const cv=$('cv'),ctx=cv.getContext('2d'),dpr=devicePixelRatio||1,W=cv.clientWidth,Hh=cv.clientHeight;cv.width=W*dpr;cv.height=Hh*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,Hh);if(!A)return;
+ const on=id=>$(id).checked,up='#26a69a',dn='#ef5350',ac='#2962ff',mu='#787b86',or='#f2a63a',rsiOn=on('i_rsi'),Hp=rsiOn?Math.round(Hh*.78):Hh,Vn=Math.min(C.length,V),s0=C.length-Vn,padR=70,cw=(W-padR)/Vn,n=C.length;
+ let hi=-1e9,lo=1e9;for(let i=s0;i<n;i++){hi=Math.max(hi,C[i].h);lo=Math.min(lo,C[i].l)}const pd=(hi-lo)*.08;hi+=pd;lo-=pd;G={s0,cw,hi,lo,Hp,padR};
+ const X=i=>(i-s0+.5)*cw,Y=p=>8+(hi-p)/(hi-lo)*(Hp-16),Yc=p=>Math.max(8,Math.min(Hp-8,Y(p))),inr=p=>p>lo&&p<hi,x0=i=>Math.max(0,X(Math.max(i,s0))-cw/2),dp=A.dp;
+ ctx.font='11px -apple-system,Segoe UI,sans-serif';
+ const box=(i,p1,p2,col,al,txt)=>{const a=x0(i),t=Yc(p2),h=Yc(p1)-t;if(h<=0)return;ctx.globalAlpha=al;ctx.fillStyle=col;ctx.fillRect(a,t,W-padR-a,h);ctx.globalAlpha=1;if(txt){ctx.fillStyle=col;ctx.textAlign='left';ctx.fillText(txt,a+5,t+12)}};
+ const line=(i,p,col,dash,txt,right)=>{if(!inr(p))return;ctx.strokeStyle=col;ctx.lineWidth=1;ctx.setLineDash(dash||[]);ctx.beginPath();ctx.moveTo(X(Math.max(i,s0)),Y(p));ctx.lineTo(W-padR,Y(p));ctx.stroke();ctx.setLineDash([]);if(txt){ctx.fillStyle=col;ctx.textAlign=right?'right':'left';ctx.fillText(txt,right?W-padR-6:W-padR+5,Y(p)+(right?-4:4))}};
+ ctx.strokeStyle='#2a2e39';for(let t=0;t<=6;t++){const p=lo+(hi-lo)*t/6;ctx.beginPath();ctx.moveTo(0,Y(p));ctx.lineTo(W-padR,Y(p));ctx.stroke();ctx.fillStyle=mu;ctx.textAlign='left';ctx.fillText(p.toFixed(dp),W-padR+5,Y(p)+4)}
+ if(on('t_pd')){box(s0,A.eq,A.hi,dn,.06);box(s0,A.lo,A.eq,up,.06);if(inr(A.hi)){ctx.fillStyle=dn;ctx.textAlign='left';ctx.fillText('PREMIUM',8,Y(A.hi)+13)}if(inr(A.lo)){ctx.fillStyle=up;ctx.fillText('DISCOUNT',8,Y(A.lo)-5)}line(s0,A.eq,mu,[3,4],'EQ',1)}
+ if(on('t_fvg'))for(const g of A.fv.slice(-5))box(g.i,g.lo,g.hi,g.d>0?up:dn,.15);
+ if(on('t_zone')){const nr=(a,b)=>Math.abs((a.lo+a.hi)/2-A.px)-Math.abs((b.lo+b.hi)/2-A.px);for(const o of A.obs.filter(o=>o.d<0).sort(nr).slice(0,2))box(o.i,o.lo,o.hi,dn,.25,'SUPPLY');for(const o of A.obs.filter(o=>o.d>0).sort(nr).slice(0,2))box(o.i,o.lo,o.hi,up,.25,'DEMAND')}
+ const ema=k=>{const m=2/(k+1);let e=C[0].c;return C.map(c=>e=c.c*m+e*(1-m))},pl=(arr,col)=>{ctx.strokeStyle=col;ctx.lineWidth=1.3;ctx.beginPath();let st=0;for(let i=s0;i<n;i++){if(arr[i]==null)continue;st?ctx.lineTo(X(i),Y(arr[i])):ctx.moveTo(X(i),Y(arr[i]));st=1}ctx.stroke();ctx.lineWidth=1};
+ for(let i=s0;i<n;i++){const k=C[i],col=k.c>=k.o?up:dn,x=X(i);ctx.strokeStyle=col;ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(x,Y(k.h));ctx.lineTo(x,Y(k.l));ctx.stroke();ctx.fillRect(x-cw*.35,Math.min(Y(k.o),Y(k.c)),cw*.7,Math.max(1,Math.abs(Y(k.o)-Y(k.c))))}
+ if(on('i_e20'))pl(ema(20),'#f2a63a');if(on('i_e50'))pl(ema(50),'#42a5f5');
+ if(on('i_bb')){const u=[],l=[],m=[];for(let i=19;i<n;i++){let s=0,q=0;for(let j=i-19;j<=i;j++)s+=C[j].c;const a=s/20;for(let j=i-19;j<=i;j++)q+=(C[j].c-a)**2;const sd=Math.sqrt(q/20);m[i]=a;u[i]=a+2*sd;l[i]=a-2*sd}pl(u,'#ab47bc');pl(l,'#ab47bc');pl(m,'#6d4c7d')}
+ if(on('t_liq')){for(const k of A.bsl.slice(0,2))line(k.i,k.p,mu,[5,4],k.eq?'EQH':'BSL');for(const k of A.ssl.slice(0,2))line(k.i,k.p,mu,[5,4],k.eq?'EQL':'SSL')}
+ if(on('t_str')){for(const e of A.ev.slice(-4))if(e.i>=s0&&inr(e.lvl)){const a=X(Math.max(e.f,s0)),b=X(e.i),c=e.d>0?up:dn;ctx.strokeStyle=c;ctx.setLineDash([4,3]);ctx.beginPath();ctx.moveTo(a,Y(e.lvl));ctx.lineTo(b,Y(e.lvl));ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=c;ctx.textAlign='center';ctx.fillText(e.type,(a+b)/2,Y(e.lvl)+(e.d>0?-4:13))}
+  if(A.lH)line(A.lH.i,A.lH.p,dn,[1,3],A.tr<0?'Strong High':'Weak High',1);if(A.lL)line(A.lL.i,A.lL.p,up,[1,3],A.tr>0?'Strong Low':'Weak Low',1)}
+ if(on('t_swg'))for(const q of A.sw)if(q.i>=s0){ctx.fillStyle=(q.lb==='HH'||q.lb==='HL')?up:(q.lb==='H'||q.lb==='L')?mu:dn;ctx.textAlign='center';ctx.fillText(q.lb,X(q.i),q.k==='H'?Y(q.p)-5:Y(q.p)+13)}
+ const p=A.p;if(p&&on('t_pln')){box(s0,p.entry,p.tp,p.d>0?up:dn,.06);line(s0,p.entry,ac,[6,3],'ENTRY');line(s0,p.sl,dn,[6,3],'SL');line(s0,p.tp,up,[6,3],'TP')}
+ const ix=t=>{const i=C.findIndex(c=>c.t===t);return i<0?null:i};
+ const shape=d=>{if(d.k==='h'){line(s0,d.p,ac,[],d.p.toFixed(dp));return}const ia=ix(d.a.t),ib=ix(d.b.t);if(ia==null||ib==null)return;const xa=X(ia),xb=X(ib),ya=Y(d.a.p),yb=Y(d.b.p);ctx.strokeStyle=ac;ctx.lineWidth=2;
+  if(d.k==='t'){ctx.beginPath();ctx.moveTo(xa,ya);ctx.lineTo(xb,yb);ctx.stroke()}
+  else if(d.k==='r'){ctx.globalAlpha=.15;ctx.fillStyle=ac;ctx.fillRect(xa,ya,xb-xa,yb-ya);ctx.globalAlpha=1;ctx.strokeRect(xa,ya,xb-xa,yb-ya)}
+  else if(d.k==='f'){ctx.lineWidth=1;const xl=Math.min(xa,xb);for(const l of[0,.236,.382,.5,.618,.705,.786,1]){const pr=d.b.p+(d.a.p-d.b.p)*l,y=Y(pr);ctx.strokeStyle=or;ctx.beginPath();ctx.moveTo(xl,y);ctx.lineTo(W-padR,y);ctx.stroke();ctx.fillStyle=or;ctx.textAlign='left';ctx.fillText(`${l} (${pr.toFixed(dp)})`,xl+4,y-3)}}
+  ctx.lineWidth=1};
+ for(const d of D)shape(d);if(pend&&ms&&ms.y<=Hp&&tool!=='h')shape({k:tool,a:pend,b:{t:ms.t,p:ms.p}});
+ if(rsiOn){const y0=Hp+10,h=Hh-y0-6,r=[];let g=0,l=0;for(let i=1;i<n;i++){const d=C[i].c-C[i-1].c;if(i<=14){g+=Math.max(d,0)/14;l+=Math.max(-d,0)/14}else{g=(g*13+Math.max(d,0))/14;l=(l*13+Math.max(-d,0))/14}if(i>=14)r[i]=100-100/(1+g/(l||1e-9))}
+  const RY=v=>y0+(100-v)/100*h;ctx.strokeStyle='#2a2e39';ctx.strokeRect(0,y0,W-padR,h);ctx.setLineDash([3,3]);for(const v of[30,70]){ctx.beginPath();ctx.moveTo(0,RY(v));ctx.lineTo(W-padR,RY(v));ctx.stroke()}ctx.setLineDash([]);
+  ctx.strokeStyle='#b388ff';ctx.beginPath();let st=0;for(let i=s0;i<n;i++){if(r[i]==null)continue;st?ctx.lineTo(X(i),RY(r[i])):ctx.moveTo(X(i),RY(r[i]));st=1}ctx.stroke();ctx.fillStyle='#b388ff';ctx.textAlign='left';ctx.fillText('RSI '+(r[n-1]||0).toFixed(1),W-padR+5,RY(r[n-1]||50)+4)}
+ const lc=C[n-1].c,col=lc>=C[n-1].o?up:dn;line(s0,lc,col,[2,3]);ctx.fillStyle=col;ctx.fillRect(W-padR+1,Y(lc)-8,padR-2,16);ctx.fillStyle='#fff';ctx.textAlign='left';ctx.fillText(lc.toFixed(dp),W-padR+5,Y(lc)+4);
+ if(ms&&ms.y<=Hp&&ms.x<W-padR){ctx.strokeStyle='#555a66';ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(ms.x,0);ctx.lineTo(ms.x,Hp);ctx.moveTo(0,ms.y);ctx.lineTo(W-padR,ms.y);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#363a45';ctx.fillRect(W-padR+1,ms.y-8,padR-2,16);ctx.fillStyle='#fff';ctx.fillText(ms.p.toFixed(dp),W-padR+5,ms.y+4)}}
+// toolbar, toggles
+[['c','✛','Cursor'],['t','╱','Trend line'],['h','―','Horizontal line'],['r','▭','Rectangle'],['f','𝑓','Fib retracement'],['u','↶','Undo last'],['x','🗑','Clear drawings']].forEach(([k,i,t])=>{const b=document.createElement('button');b.textContent=i;b.title=t;b.dataset.k=k;if(k==='c')b.className='a';b.onclick=()=>{if(k==='u'){D.pop();return draw()}if(k==='x'){D=[];return draw()}tool=k;pend=null;document.querySelectorAll('#tools button').forEach(x=>x.classList.toggle('a',x===b))};$('tools').appendChild(b)});
+[['t_zone','Supply/Demand',1],['t_pd','Premium/Discount',1],['t_str','BOS/CHoCH',1],['t_liq','Liquidity',1],['t_pln','Trade plan',1],['t_fvg','FVG',0],['t_swg','Swings',0],['i_e20','EMA 20',0],['i_e50','EMA 50',0],['i_bb','Bollinger',0],['i_rsi','RSI',0]].forEach(([id,t,c])=>{const l=document.createElement('label');l.innerHTML=`<input type="checkbox" id="${id}" ${c?'checked':''} style="padding:0;margin-right:4px">${t}`;l.firstChild.onchange=draw;$('ov').appendChild(l)});
+const pt=e=>{const r=$('cv').getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;if(!A||!G.cw)return null;const i=Math.max(0,Math.min(C.length-1,Math.round(G.s0+x/G.cw-.5)));return{x,y,t:C[i].t,p:G.hi-(y-8)/(G.Hp-16)*(G.hi-G.lo)}};
+$('cv').onmousemove=e=>{ms=pt(e);draw()};$('cv').onmouseleave=()=>{ms=null;draw()};
+$('cv').onclick=e=>{const q=pt(e);if(!q||tool==='c'||q.y>G.Hp)return;if(tool==='h'){D.push({k:'h',p:q.p})}else if(!pend)pend={t:q.t,p:q.p};else{D.push({k:tool,a:pend,b:{t:q.t,p:q.p}});pend=null}draw()};
+$('cv').onwheel=e=>{e.preventDefault();V=Math.max(30,Math.min(400,Math.round(V*(e.deltaY>0?1.12:.89))));draw()};
+addEventListener('keydown',e=>{if(e.key==='Escape'){pend=null;draw()}});
+// tabs, scanner
+function tab(id){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('a',b.dataset.t===id));document.querySelectorAll('.pn').forEach(p=>p.classList.toggle('a',p.id===id))}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>tab(b.dataset.t));
+function showScan(){const rows=Object.entries(R).sort((a,b)=>((b[1].p&&b[1].p.score)||-1)-((a[1].p&&a[1].p.score)||-1));$('sct').innerHTML='<table style="width:100%;border-collapse:collapse"><tr class="mut"><th>Pair</th><th>Bias</th><th>Setup</th><th>Score</th><th>RR</th></tr>'+rows.map(([k,v])=>v.e?`<tr><td>${esc(k)}</td><td colspan=4 class="mut">${esc(v.e)}</td></tr>`:`<tr data-s="${esc(k)}" style="cursor:pointer;border-top:1px solid var(--bd)"><td><b>${esc(k)}</b></td><td class="${v.w==='BULLISH'?'up':v.w==='BEARISH'?'dn':'mut'}">${v.w}</td><td class="${v.p?(v.p.d>0?'up':'dn'):'mut'}">${v.p?(v.p.d>0?'BUY':'SELL'):'-'}</td><td>${v.p?v.p.score+'/9':''}</td><td>${v.p?'1:'+v.p.rr.toFixed(1):''}</td></tr>`).join('')+'</table>';$('sct').querySelectorAll('tr[data-s]').forEach(r=>r.onclick=()=>{$('sym').value=r.dataset.s;tick();tab('p_an')})}
+$('scb').onclick=async()=>{const s=$('src').value,tf=$('tf').value;R={};$('scb').disabled=true;for(const sym of SRC[s].list){$('scs').textContent='Scanning '+sym+'…';try{const a=analyze(await getK(s,sym,tf));if(a)R[sym]={w:biasOf(a).w,p:a.p}}catch(e){R[sym]={e:e.message};showScan();if(/key/i.test(e.message))break}showScan();await new Promise(r=>setTimeout(r,s==='td'?7500:250))}$('scs').textContent='Scan complete';$('scb').disabled=false};
+// chat
+const fm=t=>esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
+function bub(r,t){const d=document.createElement('div');d.className='m '+r;d.innerHTML=fm(t);$('log').appendChild(d);$('log').scrollTop=1e9;return d}
+function ctx2(){if(!A)return'No chart loaded yet.';const a=A,f=x=>+x.toFixed(a.dp),sz=sizes(a,$('sym').value);
+ return JSON.stringify({symbol:$('sym').value,tf:$('tf').value,price:f(a.px),atr:f(a.atr),bias:biasOf(a).w,zone:a.zone,eq:f(a.eq),range:[f(a.lo),f(a.hi)],swings:a.sw.slice(-8).map(s=>s.lb+'@'+f(s.p)),breaks:a.ev.slice(-4).map(e=>e.type+(e.d>0?' up ':' down ')+f(e.lvl)),zones:a.obs.slice(-6).map(o=>({t:o.d>0?'demand':'supply',lo:f(o.lo),hi:f(o.hi)})),fvg:a.fv.slice(-4).map(g=>({t:g.d>0?'bull':'bear',lo:f(g.lo),hi:f(g.hi)})),bsl:a.bsl.slice(0,3).map(k=>f(k.p)),ssl:a.ssl.slice(0,3).map(k=>f(k.p)),sweeps:a.rs.map(k=>(k.k==='H'?'high ':'low ')+f(k.p)),plans:[1,-1].map(d=>a.P[d]&&{side:d>0?'buy':'sell',entry:f(a.P[d].entry),sl:f(a.P[d].sl),tp:f(a.P[d].tp),rr:+a.P[d].rr.toFixed(1),score:a.P[d].score,size:+sz[d].lot.toFixed(3),riskMoney:+sz[d].risk.toFixed(2),profitAtTP:+sz[d].profit.toFixed(2)}),balance:+$('bal').value,riskPct:+$('rk').value,scan:Object.entries(R).filter(([k,v])=>v.p).map(([k,v])=>k+' '+v.w+' '+(v.p.d>0?'BUY':'SELL')+' '+v.p.score+'/9').slice(0,12)})}
+async function llm(){const sys='You are an expert smart money (SMC), ICT and auction market theory (AMT) trading analyst inside a live charting app. Answer any question like a helpful assistant. Use LIVE CONTEXT (the app\'s analysis of the current chart, the user\'s budget and risk settings, scanner results) for chart questions. For trade ideas give entry, stop loss, take profit, reward to risk, position size from the context, and what invalidates the idea. Be concise and clear. You are not a financial advisor and no setup is certain.\nKNOWLEDGE:\n'+KB.map(e=>e[1]).join('\n')+'\nLIVE CONTEXT: '+ctx2();
+ const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':$('ck').value.trim(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-5-5',max_tokens:1200,system:sys,messages:HI.slice(-14)})});const j=await r.json();if(j.error)throw new Error(j.error.message);return j.content.map(c=>c.text||'').join('')}
+function offline(q){const l=q.toLowerCase();if(/what is|what are|explain|define|meaning|difference|how (does|do)|why/.test(l)){const h=KB.filter(e=>e[0].test(l));if(h.length)return h.slice(0,2).map(e=>e[1]).join('\n\n')}
+ if(A&&/\blots?\b|size|budget|balance|how much/.test(l)){const sz=sizes(A,$('sym').value),sp=spec($('sym').value,A.px);return[1,-1].map(d=>{const p=A.P[d],s=sz[d];return p?`${d>0?'BUY':'SELL'}: entry ${F(A,p.entry)}, SL ${F(A,p.sl)}, TP ${F(A,p.tp)}. With ${$('bal').value} budget and ${$('rk').value}% risk, size is ${s.lot.toFixed(sp.u==='units'?4:2)} ${sp.u}, risking $${s.risk.toFixed(2)} to make about $${s.profit.toFixed(2)}.`:`${d>0?'BUY':'SELL'}: no valid zone now.`}).join('\n\n')}
+ const h=KB.filter(e=>e[0].test(l));if(h.length&&!/bias|buy|sell|sl|tp|target|next/.test(l))return h[0][1];return answer(q)+'\n\n(Add a Claude API key under Keys for open-ended AI answers.)'}
+async function ask(t){t=t.trim();if(!t)return;$('q').value='';bub('u',t);HI.push({role:'user',content:t});const w=bub('a','Thinking…');let r;try{r=$('ck').value.trim()?await llm():offline(t)}catch(e){r='AI request failed: '+e.message+'\n\n'+offline(t)}w.innerHTML=fm(r);$('log').scrollTop=1e9;HI.push({role:'assistant',content:r})}
+['What is the bias?','Where to buy and sell?','How much lot for my budget?','Explain breaker block','What is AMD / power of 3?','What is value area in AMT?'].forEach(t=>{const b=document.createElement('button');b.textContent=t;b.onclick=()=>ask(t);$('chips').appendChild(b)});
+$('send').onclick=()=>ask($('q').value);$('q').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();ask($('q').value)}};
+$('src').onchange=()=>{$('sym').value=SRC[$('src').value].sym};$('tf').onchange=tick;$('go').onclick=tick;$('kb').onclick=()=>$('keys').hidden=!$('keys').hidden;
+$('tt').onclick=async()=>{const k=tdKey();$('st').textContent='Testing key…';try{const j=await(await fetch('https://api.twelvedata.com/api_usage?apikey='+encodeURIComponent(k))).json();$('st').textContent=(j.status==='error'||j.code)?`Twelve Data rejected this key (${k.length} characters, starts ${k.slice(0,4)}, ends ${k.slice(-4)}): ${j.message}`:`Key works. Plan: ${j.plan_category||'ok'}. You can press Go live.`}catch(e){$('st').textContent=netMsg(e,'td')}};
+$('dm').onclick=()=>{clearTimeout(timer);live(0);setData(demo(),0)};['bal','rk'].forEach(i=>$(i).oninput=()=>{renderRisk()});
+addEventListener('resize',draw);try{$('tk').value=localStorage.getItem('tdkey')||'';$('ck').value=localStorage.getItem('ckey')||''}catch(e){}
+$('ck').onchange=()=>{try{localStorage.setItem('ckey',$('ck').value)}catch(e){}};
+bub('a','Hi, I am your chart analyst. I read the live chart, size trades from your budget and risk %, and explain SMC, ICT and AMT concepts. Add a Claude API key under Keys to chat about anything. Press Go live to start.');
+tick();
+</script></body></html>
